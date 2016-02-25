@@ -1,0 +1,32 @@
+--NOTE: some of the following sql scripts have hardcode declarations for the database name and a single database user with (at least) read-only access to your database; 
+--this will need to be changed to match your configuration. 
+--GroupConcatInstallation.sql also requires 'clr enabled' and likely sysadm privilege to install. 
+
+--GroupConcat is a GPLv3 project replicating MySQL string functions for a SQL Server environment.
+--RegTAP functions are based on it with simple aliasing, as the RegTAP standard itself was written based on the MySQL version.
+--See https://groupconcat.codeplex.com for full documentation.
+
+
+--Hardcoded text to change:
+USE databasename
+DECLARE @readonlyuser varchar(30) = 'readonlyusername';
+
+
+--Included files from GroupConcat:
+GroupConcatInstallation.sql -- (has databasename) installs groupConcat function, this is only one really needed for TAP
+GroupConcatUninstallation.sql -- (has databasename) uninstalls groupConcat function
+Test.1.BuildTestData.sql -- (has databasename) builds test data tables
+Test.2.DemoFunctions.sql -- (has databasename) demo functions
+
+
+--Additional files for RegTAP compliance (execute in the order below):
+create_split.sql -- split function to create a table of values from a delimited string, used by ivo_hashlist_has
+create_ivo_hashlist_has.sql
+create_ivo_hasword.sql
+create_ivo_nocasematch.sql
+create_synonym_ivo_string_agg.sql -- create synonym for GROUP_CONCAT_D to preserve original function name
+grant_permissions.sql -- (has readonlyusername) grant execute permissions on functions/synonyms to readonlyusername
+
+-- sample call to ivo_string_agg
+sampleCallTo_ivo_string_agg.sql
+
