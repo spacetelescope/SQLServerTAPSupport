@@ -3,7 +3,11 @@ Support functions in SQL for IVOA Table Access Protocol (TAP) services with a Mi
 Written at Space Telescope Science Institute as part of the NASA Astronomical Virtual Observatories (NAVO) project sponsored by NASA.
 
 This repository contains SQL functions to install in a Microsoft SQL Server database for supporting specialized TAP services.
-IVOA Table Access Protocol services are RESTful interfaces to tabular data with a variety of back end support databases. The TAP standard is defined here: http://www.ivoa.net/documents/TAP/
+IVOA Table Access Protocol services are RESTful interfaces to tabular data with a variety of back end support databases. 
+At STScI, we support TAP services using Microsoft SQL Server 2012 and IIS8. This project is intended for other developers working with a MSSQL back-end for astronomical data, particularly using IVOA standards like TAP.
+
+
+The TAP standard is defined here: http://www.ivoa.net/documents/TAP/
 TAP services use the Astronomical Data Query Language (ADQL), which is a superset of SQL92, documented at http://www.ivoa.net/documents/latest/ADQL.html
 
 Built on top of the generic TAP architecture are standards for other services with specified schemas for astronomical data and service metadata.
@@ -16,4 +20,5 @@ Our implementation of these functions is in the directory "RegTAPFunctions". It 
 For the Observation Core Data Model Table Access Protocl (ObsTAP, using the ObsCore schema) standard, geometric and spatial query functions are required.
 The ObsTAP standard is still officially a working draft according to the IVOA; reference implementations already exist.
 The current version of the ObsTAP standard is available through: http://ivoa.net/documents/ObsCore/index.html
-This project does not yet contain geometric functions for ObsTAP; as of Feb 25, 2016 they are in use in other ObsCore-based services and transferring these to our ADQL / TAP environment is an active project.
+This project does not yet contain geometric functions for ObsTAP; as of Feb 25, 2016 they are in use in other ObsCore-based services at STScI ,and transferring these to our ADQL / TAP environment is an active project.
+The spatial query functions provided will require Microsoft SQL Server version 2012 or newer, with geometric support available.
