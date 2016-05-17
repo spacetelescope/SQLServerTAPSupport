@@ -21,4 +21,10 @@ For the Observation Core Data Model Table Access Protocl (ObsTAP, using the ObsC
 The ObsTAP standard is still officially a working draft according to the IVOA; reference implementations already exist.
 The current version of the ObsTAP standard is available through: http://ivoa.net/documents/ObsCore/index.html
 This project does not yet contain geometric functions for ObsTAP; as of Feb 25, 2016 they are in use in other ObsCore-based services at STScI ,and transferring these to our ADQL / TAP environment is an active project.
+
 The spatial query functions provided will require Microsoft SQL Server version 2012 or newer, with geometric support available.
+Further database requirements, for functionality and query optimisation include: (as listed from InstallSpatial.sql)
+ * The main table must contain objID, RA, DEC and Spatial columns. By default it is called CatalogRecord; this can be edited.
+ * The objID column should be unique & primary key
+ * The spatial column should be indexed (SP included)
+ * A view called ObjectList should be created containing objID, RA, DEC, Spatial (This is used by search functions)

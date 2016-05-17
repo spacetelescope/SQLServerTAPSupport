@@ -1,0 +1,51 @@
+STC-S summary
+<region>		::= <position> | <circle> | <box> | <polygon> | <union> | <intersection> | <not> | [<range>]
+
+<position>		::= POSITION <coordsys> <coordpair>
+<circle>		::= CIRCLE <coordsys> <coordpair> <radius>
+<box>			::= BOX <coordsys> <coordpair> <width> <height>
+<polygon>		::= POLYGON <coordsys> <coordpair> <coordpair> <coordpair> [<coordpair> ...]
+<union>			::= UNION <coordsys> ( <region> <region> [<region> ... ] )
+<intersection>	::= INTERSECTION [<coordsys>] ( <region> <region> [<region> ... ] )
+<not>			::= NOT ( <region> )
+<range>			::= RANGE <coordrange> [<coordrange> <coordrange> ...]	STScI local extension to Standard
+
+<coordsys>		::= [<frame>] [<refpos>] [<flavor>]
+<coordpair>		::= <coord1> < coord2>
+<coord1>		::= <numeric value>
+<coord2>		::= <numeric value>
+<width>			::= <numeric value>
+<height>		::= <numeric value>
+<coordrange>	::= <min value> <max value>
+
+<frame>			::= ECLIPTIC | FK4 | FK5 | GALACTIC | ICRS |  UNKNOWNFRAME
+                        [ MJD	| WAVELENGTH | GSC1]	STScI local extension to Standard
+<refpos>		::= BARYCENTER | GEOCENTER | HELIOCENTER | LSR | TOPOCENTER | RELOCATABLE | UNKNOWNREFPOS
+<flavor>		::= CARTESIAN2 |  CARTESIAN3 | SPHERICAL2	| [CARTESIAN1]
+
+
+JHU region summary (used by JHU/HLA for footprints - can treat as STC-S with addition of J2000 reference frame)
+<region>		::== CIRCLE <coordsys> <coordpair> <radius>
+				::== POLYGON <coordsys> <coordpair> <coordpair> <coordpair>..... [<region>....]
+<coordsys>		::== <frame>
+<coordpair>		::== <coord1> <coord2>
+<coord1>		::== <numeric value>
+<coord2>		::== <numeric value>
+<radius>		::== <numeric value>
+<frame>			::== J2000
+
+
+WKT summary (used by SQLserver in conversion to geography)
+<geography>		::= <point> | <multipoint> | <linestring> | <multilinestring> | <polygon> | <multipolygon> | <geometrycollection>
+
+<point>				::= POINT( <coordpair> )
+<multipoint>		::= MULTIPOINT(<coordpair>,<coordpair>, ...)
+<linestring>		::= LINESTRING(<coordpair>,<coordpair>, ...)
+<multilinestring>	::= MULTILINESTRING((<coordpair>,<coordpair>, ...),(<coordpair>,<coordpair>, ...), ...)
+<polygon>			::= POLYGON((<coordpair>,<coordpair>, ...) [,(<coordpair>,<coordpair>, ...)])
+<multipolygon>		::= MULTIPOLYGON(((<coordpair>,<coordpair>, ...) [,(<coordpair>,<coordpair>, ...)]),
+					 ((<coordpair>,<coordpair>, ...) [,(<coordpair>,<coordpair>, ...)]), ...)
+<geometrycollection>::= GEOMETRYCOLLECTION(<geography>,<geography>, ...)
+
+Note : POLYGONS must be closed (last pt = first pt)
+       POLYGONS first ring is counterclockwise, internal holes are clockwise
