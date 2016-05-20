@@ -1,3 +1,4 @@
+select 'Installing STC functions'
 /*******************************************************************************************************************************/
 ---------------------------------------------------------------------------------------------------------------------
 BEGIN TRY DROP FUNCTION [fnStc_ParseRegionDefinition] END TRY BEGIN CATCH END CATCH
@@ -536,7 +537,7 @@ BEGIN
 				BEGIN
 					SET @angle=RADIANS(@idx*360.0/@nVertices)				
 					SET @ypt=@r*SIN(@angle)
-					SET @xpt=(@r*COS(@angle)/COS(RADIANS(@ypt)))
+					SET @xpt=(@r*COS(@angle))--/COS(RADIANS(@ypt)))
 					delete from @eqCoord
 					insert into @eqCoord select * from dbo.fnAstrom_TranStdEq(@xpt,@ypt,@raCen,@decCen)
 					SET @Point=(select LTRIM(STR(ra,12,8))+' '+LTRIM(STR(dec,12,8)) from @eqCoord)
@@ -630,7 +631,7 @@ begin
 	DECLARE @WKT varchar(max), @line geometry 
 
 	set @WKT=dbo.fnStc_convertFootprint(@STCS,'WKT')
-	if @WKT is not null set @line=geometry::Parse(@WKT)
+	if @WKT is not null set @line=geometry::Parse(@WKT).MakeValid()
 	return @line
 end
 go
@@ -658,6 +659,7 @@ end
 go
 --select dbo.fnStc_convertSTCStoSpatial('CIRCLE ICRS 254.58755449  34.21313021   0.00069444',4326)
 --select dbo.fnStc_convertSTCStoSpatial('CIRCLE ICRS 254.58755449  34.21313021   0.00069444',104001)
+--select dbo.fnStc_ConvertSTCStoSpatial('CIRCLE 191.91549725  66.64332144 0.625',4326)
 --select dbo.fnStc_convertSTCStoSpatial('POLYGON ((129.22981692 7.97845031, 129.20117354 7.95365949, 129.2235339 7.92776646, 129.25289069 7.95318849, 129.22981692 7.97845031))',4326)
 --select dbo.fnStc_convertSTCStoSpatial('POLYGON 180.428742 -18.893042 180.461245 -18.844614 180.488081 -18.858382 180.455582 -18.906816 180.428742 -18.893042',104001)
 --select dbo.fnStc_convertSTCStoSpatial('POLYGON 180.428742 -18.893042 180.455582 -18.906816 180.488081 -18.858382 180.461245 -18.84461 180.428742 -18.893042',4326)
@@ -779,5 +781,23 @@ set @test='Polygon J2000 201.38569396 -47.59202260 201.36939200 -47.59437700 201
 select * from dbo.fnStc_ParseRegionDefinition(@test)
 select dbo.fnStc_convertFootprint(@test,'STC')
 go
+-- Test stcs queries
+select * from GSC233plus.dbo.GSC23publicVOview as X, GSC233plus.dbo.fnSpatial_SearchSTCSFootprint('CIRCLE ICRS 254.58755449  34.21313021   0.1') as N where X.objid=N.objid 
+select * from GSC233plus.dbo.GSC23publicVOview as X, GSC233plus.dbo.fnSpatial_SearchSTCSFootprint('POLYGON 180.428742 -18.893042 180.455582 -18.906816 180.488081 -18.858382 180.461245 -18.84461 180.428742 -18.893042') as N where X.objid=N.objid 
+
 */
+-- cleanup old versions
+begin try drop function ExtractRegionsFromSTCS end try begin catch end catch
+begin try drop function ExtractRegionsFromWKT end try begin catch end catch
+begin try drop function ParseRegionDefinition end try begin catch end catch
+begin try drop function dbo.convertFootprint end try begin catch end catch
+begin try drop function dbo.ConvertJHUtoWKT end try begin catch end catch
+begin try drop function dbo.convertSpatialtoSTCS end try begin catch end catch
+begin try drop function dbo.convertSTCStoLine end try begin catch end catch
+begin try drop function dbo.convertSTCStoSpatial end try begin catch end catch
+begin try drop function dbo.ConvertSTCStoWKT end try begin catch end catch
+begin try drop function dbo.convertWKTtoSpatial end try begin catch end catch
+begin try drop function dbo.ConvertWKTtoSTCS end try begin catch end catch
+begin try drop function dbo.ExtractDataValueFromRegion end try begin catch end catch
+
 ------------------------------------------------------------------------------------------------------
