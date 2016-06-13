@@ -80,7 +80,7 @@ GO
 -------------------------------------------------------------------------------------------------------------------
 PRINT N'Creating [dbo].[GROUP_CONCAT_D]...';
 GO
-CREATE AGGREGATE [dbo].[GROUP_CONCAT_D](@VALUE NVARCHAR (4000), @DELIMITER NVARCHAR (4))
+CREATE AGGREGATE [dbo].[GROUP_CONCAT_D](@VALUE NVARCHAR (max), @DELIMITER NVARCHAR (4))
     RETURNS NVARCHAR (MAX)
     EXTERNAL NAME [GroupConcat].[GroupConcat.GROUP_CONCAT_D];
 GO
@@ -99,7 +99,7 @@ GO
 -------------------------------------------------------------------------------------------------------------------
 PRINT N'Creating [dbo].[GROUP_CONCAT_S]...';
 GO
-CREATE AGGREGATE [dbo].[GROUP_CONCAT_S](@VALUE NVARCHAR (4000), @SORT_ORDER TINYINT)
+CREATE AGGREGATE [dbo].[GROUP_CONCAT_S](@VALUE NVARCHAR (max), @SORT_ORDER TINYINT)
     RETURNS NVARCHAR (MAX)
     EXTERNAL NAME [GroupConcat].[GroupConcat.GROUP_CONCAT_S];
 GO
@@ -118,7 +118,7 @@ GO
 -------------------------------------------------------------------------------------------------------------------
 PRINT N'Creating [dbo].[GROUP_CONCAT_DS]...';
 GO
-CREATE AGGREGATE [dbo].[GROUP_CONCAT_DS](@VALUE NVARCHAR (4000), @DELIMITER NVARCHAR (4), @SORT_ORDER TINYINT)
+CREATE AGGREGATE [dbo].[GROUP_CONCAT_DS](@VALUE NVARCHAR (max), @DELIMITER NVARCHAR (4), @SORT_ORDER TINYINT)
     RETURNS NVARCHAR (MAX)
     EXTERNAL NAME [GroupConcat].[GroupConcat.GROUP_CONCAT_DS];
 GO
@@ -137,7 +137,7 @@ GO
 -------------------------------------------------------------------------------------------------------------------
 PRINT N'Creating [dbo].[GROUP_CONCAT]...';
 GO
-CREATE AGGREGATE [dbo].[GROUP_CONCAT](@VALUE NVARCHAR (4000))
+CREATE AGGREGATE [dbo].[GROUP_CONCAT](@VALUE NVARCHAR (max))
     RETURNS NVARCHAR (MAX)
     EXTERNAL NAME [GroupConcat].[GroupConcat.GROUP_CONCAT];
 GO
