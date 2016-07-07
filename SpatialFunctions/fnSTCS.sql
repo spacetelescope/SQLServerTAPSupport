@@ -492,7 +492,7 @@ BEGIN
 		-- Build WKT description
 		if @type='WKT'
 		begin
- 			if (@regionType='POSITION')
+ 			if (@regionType in ('POSITION','POINT'))
  			BEGIN
 				-- Two arguments : RA and DEC
 				set @ra=@xVal1
@@ -621,6 +621,8 @@ BEGIN
 	return @footprint
 END
 go
+--select dbo.fnStc_convertFootprint('POINT ICRS 254.58755449  34.21313021','WKT')
+go
 ------------------------------------------------------------------------------------------------------
 begin try drop function fnStc_convertSTCStoLine end try begin catch end catch
 go
@@ -657,6 +659,7 @@ begin
 	return @spatial
 end
 go
+--select dbo.fnStc_convertSTCStoSpatial('POINT ICRS 254.58755449  34.21313021',104001)
 --select dbo.fnStc_convertSTCStoSpatial('CIRCLE ICRS 254.58755449  34.21313021   0.00069444',4326)
 --select dbo.fnStc_convertSTCStoSpatial('CIRCLE ICRS 254.58755449  34.21313021   0.00069444',104001)
 --select dbo.fnStc_ConvertSTCStoSpatial('CIRCLE 191.91549725  66.64332144 0.625',4326)
