@@ -1,6 +1,7 @@
 # SQLServerTAPSupport
 Support functions in SQL for IVOA Table Access Protocol (TAP) services with a Microsoft SQL Server back end. 
 Written at Space Telescope Science Institute as part of the NASA Astronomical Virtual Observatories (NAVO) project sponsored by NASA.
+The project is available under the GPLv3 license.
 
 This repository contains SQL functions to install in a Microsoft SQL Server database for supporting specialized TAP services.
 IVOA Table Access Protocol services are RESTful interfaces to tabular data with a variety of back end support databases. 
@@ -20,7 +21,9 @@ Our implementation of these functions is in the directory "RegTAPFunctions". It 
 For the Observation Core Data Model Table Access Protocl (ObsTAP, using the ObsCore schema) standard, geometric and spatial query functions are required.
 The ObsTAP standard is still officially a working draft according to the IVOA; reference implementations already exist.
 The current version of the ObsTAP standard is available through: http://ivoa.net/documents/ObsCore/index.html
-This project does not yet contain geometric functions for ObsTAP; as of Feb 25, 2016 they are in use in other ObsCore-based services at STScI ,and transferring these to our ADQL / TAP environment is an active project.
+This project provides the necessary underlying functionality for geometric TAP queries. 
+In particular, the stored procedure fnObsCore_SearchSTCSFootprint(@stcs nvarchar(max)) 
+is used by the STScI TAP service and an STScI-based branch of the taplib adql parser (https://github.com/gmantele/taplib, https://github.com/theresadower/taplib STScI branch) to do geometric queries using CONTAINS and POINT, CIRCLE, BOX, and POLYGON.
 
 The spatial query functions provided will require Microsoft SQL Server version 2012 or newer, with geometric support available.
 Further database requirements, for functionality and query optimisation include: (as listed from InstallSpatial.sql)
