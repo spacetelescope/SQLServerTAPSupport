@@ -1,0 +1,24 @@
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE FUNCTION [dbo].[fnStc_convertSTCStoSpatial](@STCS varchar(max), @srid int)
+returns geography as
+begin
+	-- Declare variables
+	DECLARE @WKT varchar(max), @spatial geography , @invertedspatial geography, @area float
+	DECLARE @geom geometry
+
+	set @WKT=dbo.fnStc_convertFootprint(@STCS,'WKT')
+	if @WKT is not null set @spatial=geography::STGeomFromText(@WKT,@srid).MakeValid()
+
+	-- Check to see if polygon vertices are 'backwards'
+	if @spatial.EnvelopeAngle() >= 90
+	begin
+		set @spatial=@spatial.ReorientObject()
+	end
+	return @spatial
+end
+GO

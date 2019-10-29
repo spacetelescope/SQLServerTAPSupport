@@ -1,11 +1,12 @@
-DROP FUNCTION IF EXISTS [dbo].[fnCaomPlaneSpatial_SearchSTCSFootprint]
-GO
-
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
+
+
+
 
 CREATE FUNCTION [dbo].[fnCaomPlaneSpatial_SearchSTCSFootprint](@stcs nvarchar(max))
 RETURNS @CaomPlane TABLE 
@@ -77,25 +78,38 @@ RETURNS @CaomPlane TABLE
 	[metaChecksum] [varchar](64) NULL,
 	[accMetaChecksum] [varchar](64) NULL,
 	[id] [uniqueidentifier] NULL,
-	[recordModified] [datetime] NULL
+	[recordModified] [datetime] NULL,
+	[distance] [float] NULL
 )
 AS BEGIN
 	-- Declare variables
-	DECLARE @footprintSearch geography
-	DECLARE @neighbours table(objID bigint)
+	DECLARE @neighbours table(objID bigint, distance float)
+	DECLARE @footprintSearch geography, @footprintArea float, @errorMessage varchar(256), @maxArea float=0.05
+	DECLARE @searchCenter geography
 	-- Create spatial footprint for search
 	SET @footprintSearch=(select dbo.fnStc_convertSTCStoSpatial(@stcs,104001))
-	-- Create table of objects intersecting box
-	INSERT @neighbours SELECT objID FROM objectCoords WHERE Spatial.STIntersects(@footprintSearch)=1 
-	insert @CaomPlane select 
-		p.planeID, p.obsID, p.productID, p.creatorID, p.metaDataRights, p.metaRelease, p.dataRights, p.dataRelease, p.dataProductType, p.calibrationLevel,
-		p.previewURI, p.productURI, p.prvName, p.prvReference, p.prvVersion, p.prvProject, p.prvProducer, p.prvRunID, p.prvLastExecuted, p.prvKeywords,
-		p.prvInputs, p.posLocationRA, p.posLocationDec, p.posBounds, p.posBoundsSTCS, p.posDimension1, p.posDimension2, p.posResolution, p.posSampleSize, p.posTimeDependant,
-		p.enrValue, p.enrMin, p.enrMax, p.enrBounds, p.enrBoundsSTCS, p.enrDimension, p.enrResolution, p.enrSampleSize, p.enrResolvingPower, p.enrBandpassName,
-		p.enrEMBand, p.enrTransition, p.enrTransitionSpecies, p.enrRestWavelength, p.timValue, p.timMin, p.timMax, p.timBounds, p.timBoundsSTCS, p.timDimension,
-		p.timResolution, p.timSampleSize, p.timExposure, p.plrDimension, p.plrState, p.dqFlag, p.mtrSourceNumberDensity, p.mtrBackground, p.mtrBackgroundStdDev, p.mtrFluxDensityLimit,
-		p.mtrMagLimit, p.recordCreated, p.lastModified, p.maxLastModified, p.metaChecksum, p.accMetaChecksum, p.id, p.recordModified
-	from @neighbours N join CaomPlane p on p.planeID=N.objID 
+	SET @footprintArea=@footprintSearch.STArea()
+	SET @searchCenter=@footprintSearch.EnvelopeCenter() 
+	if @footprintArea < @maxArea
+	begin
+		-- Create table of objects intersecting box
+		INSERT @neighbours SELECT objID, @searchCenter.STDistance(Spatial.EnvelopeCenter()) AS distance FROM objectCoords WHERE Spatial.STIntersects(@footprintSearch)=1 
+		insert @CaomPlane select 
+			p.planeID, p.obsID, p.productID, p.creatorID, p.metaDataRights, p.metaRelease, p.dataRights, p.dataRelease, p.dataProductType, p.calibrationLevel,
+			p.previewURI, p.productURI, p.prvName, p.prvReference, p.prvVersion, p.prvProject, p.prvProducer, p.prvRunID, p.prvLastExecuted, p.prvKeywords,
+			p.prvInputs, p.posLocationRA, p.posLocationDec, p.posBounds, p.posBoundsSTCS, p.posDimension1, p.posDimension2, p.posResolution, p.posSampleSize, p.posTimeDependant,
+			p.enrValue, p.enrMin, p.enrMax, p.enrBounds, p.enrBoundsSTCS, p.enrDimension, p.enrResolution, p.enrSampleSize, p.enrResolvingPower, p.enrBandpassName,
+			p.enrEMBand, p.enrTransition, p.enrTransitionSpecies, p.enrRestWavelength, p.timValue, p.timMin, p.timMax, p.timBounds, p.timBoundsSTCS, p.timDimension,
+			p.timResolution, p.timSampleSize, p.timExposure, p.plrDimension, p.plrState, p.dqFlag, p.mtrSourceNumberDensity, p.mtrBackground, p.mtrBackgroundStdDev, p.mtrFluxDensityLimit,
+			p.mtrMagLimit, p.recordCreated, p.lastModified, p.maxLastModified, p.metaChecksum, p.accMetaChecksum, p.id, p.recordModified, N.distance
+		from @neighbours N join CaomPlane p on p.planeID=N.objID 
+	end
+	else
+	begin
+		set @errorMessage='Footprint '+@footprintArea+' exceeds max allowed area '+str(@maxArea)
+		insert @neighbours select @errorMessage, NULL
+		--RAISERROR(@errorMessage,10,1)
+	end
 	RETURN 
 END
 GO

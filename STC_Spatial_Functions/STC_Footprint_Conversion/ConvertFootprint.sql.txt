@@ -1,0 +1,246 @@
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE FUNCTION [dbo].[fnStc_convertFootprint] (@footprint varchar(max), @type char(3))
+RETURNS varchar(max)
+AS
+BEGIN
+	declare @idx int=-1, @length int=-1
+	declare @regionNumber int, @regionSys char(3), @regionType varchar(max), @coordSys varchar(max)
+	declare @pointNumber int, @xVal1 varchar(max), @yVal1 varchar(max), @xVal2 varchar(max), @yVal2 varchar(max)
+	declare @nRegions int, @nRegionTypes int, @nPoints int, @nRows int
+	declare @nPosition int, @nCircle int, @nBox int, @nPolygon int, @nPoint int, @nLinestring int, @nRange int
+	declare @vertexList TABLE(regionNumber int, regionSys char(3), regionType varchar(max), coordSys varchar(max), 
+                              pointNumber int, xVal1 varchar(max), yVal1 varchar(max), xVal2 varchar(max), yVal2 varchar(max))
+	declare @location varchar(max), @raMin float, @raMax float, @decMin float, @decMax float, @raCen float, @decCen float
+	DECLARE @ra varchar(max), @dec varchar(max), @radius varchar(max), @width varchar(max), @height varchar(max)
+	DECLARE @minVal varchar(max), @maxVal varchar(max)
+	DECLARE @xpt float, @ypt float, @angle float, @nVertices int, @r float
+	declare @eqCoord table(ra float, dec float)
+	DECLARE @startPoint varchar(max), @Point varchar(max), @WKT varchar(max)=null
+
+	-- Parse footprint definition
+	insert into @vertexList select * from dbo.fnStc_ParseRegionDefinition(@footprint)
+
+	-- validate elements of footprint
+	set @nRegions=(select max(regionNumber) from @vertexList)
+	set @nRegionTypes=(select count(distinct regionType) from @vertexList)
+	set @nPoints=(select count(*) from @vertexList)
+	set @nPosition=(select count(regionNumber) from @vertexList where regionType='POSITION')
+	set @nCircle=(select count(regionNumber) from @vertexList where regionType='CIRCLE')
+	set @nBox=(select count(regionNumber) from @vertexList where regionType='BOX')
+	set @nPolygon=(select count(distinct(regionNumber)) from @vertexList where regionType='POLYGON')
+	set @nRange=(select count(regionNumber) from @vertexList where regionType='RANGE')
+	set @nPoint=(select count(regionNumber) from @vertexList where regionType='POINT')
+	set @nLinestring=(select count(regionNumber) from @vertexList where regionType='LINESTRING')
+
+	-- Initialise returned footprint
+	if (@type='JHU' or @type='STC') set @footprint=''
+	if @type='WKT' 
+	begin
+		set @footprint=''
+	end
+
+	DECLARE cFootprint CURSOR FOR 
+		SELECT regionNumber, regionSys, regionType, coordSys, pointNumber, xVal1, yVal1, xVal2, yVal2
+		FROM @vertexList
+
+	OPEN cFootprint  
+	FETCH NEXT FROM cFootprint INTO @regionNumber, @regionSys, @regionType, @coordSys, @pointNumber, @xVal1, @yVal1, @xVal2, @yVal2  
+	WHILE @@FETCH_STATUS = 0  
+	BEGIN  
+		-- Get number of rows for this region
+		set @nRows=(select max(pointNumber) from @vertexList where regionNumber=@regionNumber)
+
+		-- Build JHU/STC description
+		if (@type='JHU' or @type='STC')
+		begin
+ 			if (@regionType in ('POSITION','POINT'))
+ 			BEGIN
+				-- Two arguments : RA and DEC
+				set @footprint=@footprint+'POSITION '+@coordSys+' '+@xVal1+' '+@yVal1
+ 			END
+
+			if (@regionType='BOX')
+ 			BEGIN
+				-- Four arguments : RA center, DEC center, RA width, DEC height		
+				set @footprint=@footprint+'POSITION '+@coordSys+' '+@xVal1+' '+@yVal1+' '+@xVal2+' '+@yVal2
+ 			END		
+
+			IF (@regionType='CIRCLE') 
+			BEGIN
+				-- Three arguments : RA center, DEC center, Radius
+				set @footprint=@footprint+'CIRCLE '+@coordSys+' '+@xVal1+' '+@yVal1+' '+@xVal2
+			END		
+
+ 			if (@regionType='LINESTRING')
+ 			BEGIN
+				-- Does not map to STC
+				---set @footprint=@footprint+'LINESTRING unsupported'
+				set @footprint=@footprint+'RANGE '+@coordSys+' '+@xVal1+' '+@xVal2
+ 			END
+
+			if (@regionType='RANGE')
+ 			BEGIN
+				-- Four arguments in Two arguments out : minVal maxVal	
+				set @footprint=@footprint+'RANGE '+@coordSys+' '+@xVal1+' '+@xVal2
+ 			END	
+				
+			IF (@regionType = 'POLYGON')
+			BEGIN
+				-- Two arguments : RA and DEC
+				set @ra=@xVal1
+				set @dec=@yVal1
+
+				if @pointNumber=1 
+				begin
+					SET @location=@xVal1+' '+@yVal1
+					set @startPoint=@location
+				end
+				if @pointNumber>1
+				begin
+					SET @location=@location+' '+@xVal1+' '+@yVal1
+				end
+				if @pointNumber=@nRows set @footprint=@footprint+'POLYGON '+@coordSys+' '+@location+' '+@startPoint
+			END
+
+			if (@regionNumber<@nRegions and @pointNumber=@nRows) set @footprint=@footprint+' ' 
+		end
+
+		-- Build WKT description
+		if @type='WKT'
+		begin
+ 			if (@regionType in ('POSITION','POINT'))
+ 			BEGIN
+				-- Two arguments : RA and DEC
+				set @ra=@xVal1
+				set @dec=@yVal1
+
+				SET @location=LTRIM(STR(@ra,12,8))+' '+LTRIM(STR(@dec,12,8))
+				set @footprint=@footprint+'POINT('+@location+')'
+ 			END
+
+			if (@regionType='BOX')
+ 			BEGIN
+				-- Four arguments : RA center, DEC center, RA width, DEC height
+
+				-- Compute corner coordinates
+				SET @ramin=CAST(@xVal1 as float)-CAST(@xVal2 as float)/2.0
+				SET @ramax=CAST(@xVal1 as float)+CAST(@xVal2 as float)/2.0
+				SET @decmin=CAST(@yVal1 as float)-CAST(@yVal2 as float)/2.0
+				SET @decmax=CAST(@yVal1 as float)+CAST(@yVal2 as float)/2.0
+			
+				-- Build Box as Polygon
+				SET @location=      '('+LTRIM(STR(@ramax,12,8))+' '+LTRIM(STR(@decmin,12,8))+','
+				SET @location=@location+LTRIM(STR(@ramax,12,8))+' '+LTRIM(STR(@decmax,12,8))+','
+				SET @location=@location+LTRIM(STR(@ramin,12,8))+' '+LTRIM(STR(@decmax,12,8))+','
+				SET @location=@location+LTRIM(STR(@ramin,12,8))+' '+LTRIM(STR(@decmin,12,8))+','
+				SET @location=@location+LTRIM(STR(@ramax,12,8))+' '+LTRIM(STR(@decmin,12,8))+')'
+				set @footprint=@footprint+'POLYGON('+@location+')'
+ 			END		
+				
+			IF (@regionType='CIRCLE') 
+			BEGIN
+				-- Three arguments : RA center, DEC center, Radius
+				set @raCen=@xVal1
+				set @decCen=@yVal1
+				set @radius=@xVal2
+
+				-- Build circle as polygon with n vertices (15 < n < 60 depending on radius)
+				set @r=cast(@radius as float)*3600.0	-- converting from degrees to arcsec
+				SET @nVertices=(select iif (@r/60. < 15,15,floor(@r/60)))
+				SET @location='('
+				SET @idx=0
+				WHILE @idx < @nVertices
+				BEGIN
+					SET @angle=RADIANS(@idx*360.0/@nVertices)				
+					SET @ypt=@r*SIN(@angle)
+					SET @xpt=(@r*COS(@angle))--/COS(RADIANS(@ypt)))
+					delete from @eqCoord
+					insert into @eqCoord select * from dbo.fnAstrom_TranStdEq(@xpt,@ypt,@raCen,@decCen)
+					SET @Point=(select LTRIM(STR(ra,12,8))+' '+LTRIM(STR(dec,12,8)) from @eqCoord)
+					IF (@idx=0) SET @startPoint=@Point
+					SET @location=@location+@Point+','
+					SET @idx=@idx+1
+				END
+				SET @location=@location+@startPoint+')'	
+				set @footprint=@footprint+'POLYGON('+@location+')'	
+			END		
+
+			IF (@regionType = 'POLYGON')
+			BEGIN
+				-- Two arguments : RA and DEC
+				set @ra=@xVal1
+				set @dec=@yVal1
+
+				if @pointNumber=1 
+				begin
+					SET @location=LTRIM(STR(@ra,12,8))+' '+LTRIM(STR(@dec,12,8))
+					set @startPoint=@location
+				end
+				if @pointNumber>1
+				begin
+					SET @location=@location+','+LTRIM(STR(@ra,12,8))+' '+LTRIM(STR(@dec,12,8))
+				end
+				if @pointNumber=@nRows set @footprint=@footprint+'POLYGON(('+@location+','+@startPoint+'))'
+			END
+
+			IF (@regionType = 'RANGE')
+ 			BEGIN
+				-- 2 arguments : minValue maxValue
+				SET @minVal=@xVal1
+				SET @maxVal=@yVal1
+	
+				-- Build Range as endpoints of line
+				SET @location=LTRIM(@minVal)+' 0,'+LTRIM(@maxVal)+' 0'
+				set @footprint=@footprint+'LINESTRING('+@location+')'
+ 			END		
+
+			if (@regionNumber<@nRegions and @pointNumber=@nRows) set @footprint=@footprint+',' 
+
+		end
+	FETCH NEXT FROM cFootprint INTO @regionNumber, @regionSys, @regionType, @coordSys, @pointNumber, @xVal1, @yVal1, @xVal2, @yVal2  
+	END  
+
+	CLOSE cFootprint  
+	DEALLOCATE cFootprint
+
+
+	-- Additional WKT processing
+	if @type='WKT'
+	begin
+		-- consolidate MULTI
+		if @nPoint>1 or @nPosition>1
+		begin
+			set @footprint=dbo.fnStr_replacei(@footprint,'POINT','')
+			set @footprint=dbo.fnStr_replacei(@footprint,'(','')
+			set @footprint=dbo.fnStr_replacei(@footprint,')','')
+			set @footprint='MULTIPOINT('+@footprint+')'
+		end
+		if @nPolygon>1
+		begin
+			set @footprint=dbo.fnStr_replacei(@footprint,'POLYGON','')
+			set @footprint='MULTIPOLYGON('+@footprint+')'
+		end
+		if @nLinestring>1 or @nRange>1
+		begin
+			set @footprint=dbo.fnStr_replacei(@footprint,'LINESTRING','')
+			set @footprint='MULTILINESTRING('+@footprint+')'
+		end
+
+		if @nRegionTypes>1
+		begin
+			set @footprint='GEOMETRYCOLLECTION('+@footprint+')'
+		end
+	end
+
+	SET @footprint=RTRIM(LTRIM(UPPER(dbo.fnStr_RemoveMultipleSpaces(@footprint))))
+	if @footprint='' set @footprint=null
+	return @footprint
+END
+GO
+
+
